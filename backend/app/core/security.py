@@ -1,4 +1,4 @@
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,UTC
 from typing import Literal
 from jose import jwt,JWTError #type:ignore
 from passlib.context import CryptContext #type:ignore
@@ -16,15 +16,15 @@ def create_token(
     subject:str,token_type: Literal["access","refresh"]
 )->str:
     if token_type=="access":
-        expire=datetime.now+timedelta(minutes=settings.access_token_expire_minutes)
+        expire=datetime.now(UTC)+timedelta(minutes=settings.access_token_expire_minutes)
     else:
-        expire=datetime.now+timedelta(days=settings.refresh_token_expire_days)
+        expire=datetime.now(UTC)+timedelta(days=settings.refresh_token_expire_days)
         
     payload={
         'sub':subject,
         "type":token_type,
         "exp":expire,
-        "iat":datetime.now
+        "iat":datetime.now(UTC)
     }
     
     return jwt.encode(payload,settings.jwt_secret_key,algorithm=settings.jwt_algorithm)

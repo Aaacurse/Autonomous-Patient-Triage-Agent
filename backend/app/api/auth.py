@@ -1,17 +1,17 @@
 from fastapi import APIRouter,Depends,HTTPException,status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer,OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel,EmailStr
 from app.db.sessions import get_db
 from app.db.models import User
-from app.db.crud import get_user_by_email
+from app.db.crud import get_user_by_email,create_user
 from app.core.security import hash_password,decode_token,create_token,verify_password
 
 
 router=APIRouter(prefix='/auth',tags=["auth"])
 
-oauth2_scheme=OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme=OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 class RegisterRequest(BaseModel):
@@ -34,19 +34,12 @@ class RefreshRequest(BaseModel):
     
 @router.post('/register',response_model=TokenResponse,status_code=status.HTTP_201_CREATED)
 async def register(payload:RegisterRequest,db:AsyncSession=Depends(get_db)):
-    existing=get_user_by_email(db=db,email=payload.email)
+    existing=await get_user_by_email(db=db,email=payload.email)
     
     if existing:
         raise HTTPException(status_code=400,detail="Email already Registered")
     
-    user=User(
-        email=payload.email,
-        full_name=payload.full_name,
-        hashed_password=hash_password(payload.password)
-    )
-    db.add(user)
-    await db.flush()
-    
+    user= await create_user(db,payload.email,payload.full_name,payload.password)
     access_token=create_token(payload.email,"access")
     refresh_token=create_token(payload.email,"refresh")
     
@@ -54,10 +47,10 @@ async def register(payload:RegisterRequest,db:AsyncSession=Depends(get_db)):
 
 
 @router.post('/login',response_model=TokenResponse)
-async def login(payload:LoginRequest,db:AsyncSession=Depends(get_db)):
-    user=get_user_by_email(db=db,email=payload.email)
+async def login(form: OAuth2PasswordRequestForm = Depends(),db:AsyncSession=Depends(get_db)):
+    user=await get_user_by_email(db=db,email=form.username)
     
-    if not user or not verify_password(payload.password,user.hashed_password):
+    if not user or not verify_password(form.password,user.hashed_password):
         raise HTTPException(status_code=401,detail="Invalid credentials")
     
     if not user.is_active:
@@ -76,7 +69,7 @@ async def refresh(payload:RefreshRequest,db:AsyncSession=Depends(get_db)):
     except ValueError:
         raise HTTPException(status_code=401,detail="Invalid refresh token")
     
-    user=get_user_by_email(db=db,email=email)
+    user=await get_user_by_email(db=db,email=email)
     
     if not user or not user.is_active:
         raise HTTPException(status_code=401,detail="User not found or inactive")
@@ -94,7 +87,7 @@ async def get_current_user(token:str=Depends(oauth2_scheme),db:AsyncSession=Depe
     if not email:
         raise HTTPException(status_code=401,detail="Invalid credentials")
     
-    user=get_user_by_email(db=db,email=email)
+    user=await get_user_by_email(db=db,email=email)
     
     if not user:
         raise HTTPException(status_code=401,detail="User not found")
