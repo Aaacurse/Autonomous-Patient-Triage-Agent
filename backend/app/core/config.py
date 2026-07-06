@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
-    database_url: str = "postgresql+asyncpg://triage_user:triage_pass@localhost:5432/triage_db"
+    database_url:str="postgresql+asyncpg://triage_user:triage_pass@localhost:5432/triage_db"
 
     jwt_secret_key: str = "changeme"
     jwt_algorithm: str = "HS256"
