@@ -1,5 +1,5 @@
 import re
-import en_core_sci_sm
+import en_core_sci_sm   # type: ignore
 from langchain_groq import ChatGroq
 from app.core.config import settings
 from pydantic import BaseModel,Field
