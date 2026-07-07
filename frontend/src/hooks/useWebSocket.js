@@ -47,6 +47,11 @@ export function useWebSocket(token) {
             if (status !== "complete") setStatus("idle")
         }
     }, [token])
+    function reset() {
+        setEvents([])
+        setResult(null)
+        setStatus("idle")
+    }
 
-    return { events, status, result, startTriage }
+    return { events, status, result, startTriage, reset }
 }

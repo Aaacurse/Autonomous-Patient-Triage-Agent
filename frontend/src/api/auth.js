@@ -17,3 +17,17 @@ export async function login(email, password) {
 
     return response.json()  // { access_token, refresh_token, token_type }
 }
+export async function register(email, fullName, password) {
+    const response = await fetch(`${BASE_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, full_name: fullName, password }),
+    })
+
+    if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Registration failed")
+    }
+
+    return response.json()
+}

@@ -3,10 +3,10 @@ import LoginPage from "./pages/LoginPage"
 import Dashboard from "./pages/Dashboard"
 
 function App() {
-    const { token, login, logout } = useAuth()
+    const { token, login, logout, register } = useAuth()
 
     if (!token) {
-        return <LoginPage onLogin={login} />
+        return <LoginPage onLogin={login} onRegister={register} />
     }
 
     return <Dashboard token={token} onLogout={logout} />

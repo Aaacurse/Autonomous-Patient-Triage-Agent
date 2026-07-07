@@ -28,6 +28,8 @@ async def nlp_extract_node(state:TriageState)->TriageState:
     pain_score = extract_pain_score(complaint)
     groq_output = groom_with_groq(complaint, entities)
 
+    if pain_score is None:
+        pain_score = groq_output.inferred_pain_score
     
     return {
         **state,

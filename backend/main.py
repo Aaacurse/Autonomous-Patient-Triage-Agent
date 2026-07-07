@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.auth import router as auth_router
 from app.api.websocket import router as ws_router
+from app.api.triage import router as triage_router
 
 from fastapi import Depends
 from app.db.models import User
@@ -29,6 +30,7 @@ def health():
 
 app.include_router(auth_router)
 app.include_router(ws_router)
+app.include_router(triage_router)
 
 
 @app.get("/me")

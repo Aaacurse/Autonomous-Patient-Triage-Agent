@@ -1,8 +1,11 @@
 import { useState } from "react"
 
-function LoginPage({ onLogin }) {
+function LoginPage({ onLogin, onRegister }) {
+    const [mode, setMode] = useState("login")  // login | register
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
+    const [fullName, setFullName] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState(null)
     const [loading, setLoading] = useState(false)
 
@@ -11,18 +14,41 @@ function LoginPage({ onLogin }) {
             setError("Please enter email and password")
             return
         }
+        if (mode === "register" && !fullName) {
+            setError("Please enter your full name")
+            return
+        }
         setLoading(true)
         setError(null)
-        const success = await onLogin(email, password)
-        if (!success) setError("Invalid credentials")
+        const success = mode === "login"
+            ? await onLogin(email, password)
+            : await onRegister(email, fullName, password)
+        if (!success) setError(mode === "login" ? "Invalid credentials" : "Registration failed")
         setLoading(false)
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === "Enter") handleSubmit()
     }
 
     return (
         <div style={styles.container}>
             <div style={styles.card}>
                 <h2 style={styles.title}>Patient Triage System</h2>
-                <p style={styles.subtitle}>Nurse Login</p>
+                <p style={styles.subtitle}>
+                    {mode === "login" ? "Nurse Login" : "Create Account"}
+                </p>
+
+                {mode === "register" && (
+                    <input
+                        style={styles.input}
+                        type="text"
+                        placeholder="Full Name"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                    />
+                )}
 
                 <input
                     style={styles.input}
@@ -30,14 +56,26 @@ function LoginPage({ onLogin }) {
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={handleKeyDown}
                 />
-                <input
-                    style={styles.input}
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
+
+                <div style={styles.passwordWrapper}>
+                    <input
+                        style={{ ...styles.input, flex: 1, margin: 0 }}
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                    />
+                    <button
+                        style={styles.eyeButton}
+                        onClick={() => setShowPassword(!showPassword)}
+                        tabIndex={-1}
+                    >
+                        {showPassword ? "Hide" : "Show"}
+                    </button>
+                </div>
 
                 {error && <p style={styles.error}>{error}</p>}
 
@@ -46,8 +84,20 @@ function LoginPage({ onLogin }) {
                     onClick={handleSubmit}
                     disabled={loading}
                 >
-                    {loading ? "Logging in..." : "Login"}
+                    {loading
+                        ? "Please wait..."
+                        : mode === "login" ? "Login" : "Register"}
                 </button>
+
+                <p style={styles.toggle}>
+                    {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+                    <span
+                        style={styles.link}
+                        onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(null) }}
+                    >
+                        {mode === "login" ? "Register" : "Login"}
+                    </span>
+                </p>
             </div>
         </div>
     )
@@ -79,6 +129,25 @@ const styles = {
         border: "1px solid #e2e8f0",
         fontSize: "14px",
         outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+    },
+    passwordWrapper: {
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        border: "1px solid #e2e8f0",
+        borderRadius: "8px",
+        padding: "0 0.5rem",
+    },
+    eyeButton: {
+        background: "none",
+        border: "none",
+        cursor: "pointer",
+        color: "#718096",
+        fontSize: "12px",
+        padding: "0.25rem",
+        whiteSpace: "nowrap",
     },
     button: {
         padding: "0.75rem",
@@ -90,6 +159,8 @@ const styles = {
         cursor: "pointer",
     },
     error: { color: "#e53e3e", fontSize: "13px", margin: 0 },
+    toggle: { margin: 0, fontSize: "13px", color: "#718096", textAlign: "center" },
+    link: { color: "#3182ce", cursor: "pointer", fontWeight: "500" },
 }
 
 export default LoginPage
