@@ -82,8 +82,10 @@ async def refresh(payload:RefreshRequest,db:AsyncSession=Depends(get_db)):
 
 
 async def get_current_user(token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
-    payload=decode_token(token)
-    email=payload.get("sub")
+    try:
+        email = decode_token(token, "access")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token")
     if not email:
         raise HTTPException(status_code=401,detail="Invalid credentials")
     
