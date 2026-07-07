@@ -19,6 +19,7 @@ class NLPExtractionOutput(BaseModel):
     estimated_resources: list[str] = Field(description="ED resources needed: labs, imaging, iv_medication, consult")
     danger_zone_vitals: bool = Field(description="True if any vitals are in danger zone")
     clinical_notes: str = Field(description="One sentence clinical summary")
+    inferred_pain_score: int = Field(description="Pain score 0-10 inferred from description. 0=none, 1-3=mild, 4-6=moderate, 7-9=severe, 10=worst possible. Use qualitative words if no numeric score given.")
 
 structured_llm = llm.with_structured_output(NLPExtractionOutput)
 
@@ -67,9 +68,16 @@ scispaCy extracted entities: {entity_text}
 
 Rules:
 - is_life_threat = true only if airway/breathing/circulation is compromised or patient is unresponsive
-- is_high_risk = true if severe pain 7+, altered mental status, or high-risk presentation  
+- is_high_risk = true if severe pain 7+, altered mental status, or high-risk presentation
 - estimated_resources = only what an ED would realistically need: labs, imaging, iv_medication, consult
 - danger_zone_vitals = true if HR > 120, RR > 20, SpO2 < 92%, temp > 104F or < 96F
+- inferred_pain_score = estimate 0-10 from qualitative words if no numeric score:
+    - "mild", "dull", "slight" = 2-3
+    - "moderate", "uncomfortable", "sore" = 4-5
+    - "sharp", "bad", "significant" = 5-6
+    - "severe", "intense", "awful" = 7-8
+    - "excruciating", "worst ever", "unbearable" = 9-10
+    - no pain mentioned = 0
 """
 
     result: NLPExtractionOutput = structured_llm.invoke(prompt)
