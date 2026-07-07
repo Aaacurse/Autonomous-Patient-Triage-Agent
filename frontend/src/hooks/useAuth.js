@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import { login as loginApi, register as registerApi } from "../api/auth"
 
 export function useAuth() {
@@ -48,6 +48,33 @@ export function useAuth() {
         setUser(null)
         sessionStorage.removeItem("token")
     }
+
+    useEffect(() => {
+    if (!token) return
+
+    let timer
+
+    const resetTimer = () => {
+        clearTimeout(timer)
+        timer = setTimeout(() => {
+            logout()
+        },  15 * 60 * 1000)
+    }
+
+    resetTimer()
+
+    window.addEventListener("mousemove", resetTimer)
+    window.addEventListener("keydown", resetTimer)
+    window.addEventListener("mousedown", resetTimer)
+    window.addEventListener("scroll", resetTimer)
+
+    return () => {
+        clearTimeout(timer)
+        window.removeEventListener("mousemove", resetTimer)
+        window.removeEventListener("keydown", resetTimer)
+        window.removeEventListener("mousedown", resetTimer)
+        window.removeEventListener("scroll", resetTimer)
+    }}, [token])
 
     return { token, user, error, loading, login, logout, register }
 }
