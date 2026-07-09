@@ -12,7 +12,7 @@ async def test_triage():
         # send complaint
         await ws.send(json.dumps({
             "complaint": "severe chest pain radiating to arm, pain 8/10",
-            "patient_id": "patient-test-001"
+            "mrn": "MRN-00001"
         }))
 
         # receive all events until connection closes

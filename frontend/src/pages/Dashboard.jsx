@@ -7,17 +7,19 @@ import HistoryPanel from "../components/HistoryPanel"
 function Dashboard({ token, onLogout, countdown }) {
     const [tab, setTab] = useState("triage")
     const [complaint, setComplaint] = useState("")
-    const [patientId, setPatientId] = useState("")
+    const [mrn, setMrn] = useState("")
     const { events, status, result, startTriage, reset } = useWebSocket(token)
+    const MRN_PATTERN = /^MRN-\d{4,}$/i
+    const mrnValid = MRN_PATTERN.test(mrn.trim())
 
     function handleSubmit() {
         if (!complaint.trim()) return
-        startTriage(complaint, patientId)
+        startTriage(complaint, mrn.trim().toUpperCase())
     }
 
     function handleNewTriage() {
         setComplaint("")
-        setPatientId("")
+        setMrn("")
         reset()
     }
     const minutes = Math.floor(countdown / 60)
@@ -62,11 +64,19 @@ function Dashboard({ token, onLogout, countdown }) {
                 <>
                     <div style={styles.form}>
                         <input
-                            style={styles.input}
-                            placeholder="Patient ID (optional)"
-                            value={patientId}
-                            onChange={(e) => setPatientId(e.target.value)}
+                            style={{
+                                ...styles.input,
+                                ...(mrn && !mrnValid ? styles.inputError : {}),
+                            }}
+                            placeholder="Patient MRN (e.g. MRN-00123)"
+                            value={mrn}
+                            onChange={(e) => setMrn(e.target.value)}
                         />
+                        {mrn && !mrnValid && (
+                            <span style={styles.errorText}>
+                                Enter a valid MRN, e.g. MRN-00123
+                            </span>
+                        )}
                         <textarea
                             style={styles.textarea}
                             placeholder="Enter patient complaint..."
@@ -78,7 +88,7 @@ function Dashboard({ token, onLogout, countdown }) {
                             <button
                                 style={styles.button}
                                 onClick={handleSubmit}
-                                disabled={status === "streaming" || status === "connecting"}
+                                disabled={status === "streaming" || status === "connecting" || !complaint.trim() || !mrnValid}
                             >
                                 {status === "connecting" ? "Connecting..." :
                                  status === "streaming" ? "Processing..." : "Start Triage"}
@@ -117,6 +127,8 @@ const styles = {
     secondaryButton: { padding: "0.75rem 1.5rem", backgroundColor: "white", color: "#3182ce", border: "1px solid #3182ce", borderRadius: "8px", fontSize: "14px", cursor: "pointer" },
     headerRight: {display: "flex",alignItems: "center",gap: "1rem",},
     timer: {fontSize: "14px",fontWeight: "600",color: "#4a5568",backgroundColor: "#edf2f7",padding: "0.45rem 0.9rem",borderRadius: "999px",},
+    inputError: { border: "1px solid #e53e3e" },
+    errorText: { fontSize: "12px", color: "#e53e3e", marginTop: "-0.5rem" },    
 }
 
 export default Dashboard

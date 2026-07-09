@@ -8,7 +8,7 @@ export function useWebSocket(token) {
     const [result, setResult] = useState(null)
     const wsRef = useRef(null)
 
-    const startTriage = useCallback((complaint, patientId) => {
+    const startTriage = useCallback((complaint, mrn) => {
         // Reset state
         setEvents([])
         setResult(null)
@@ -21,7 +21,7 @@ export function useWebSocket(token) {
             setStatus("streaming")
             ws.send(JSON.stringify({
                 complaint,
-                patient_id: patientId || undefined,
+                mrn,
             }))
         }
 
@@ -29,7 +29,6 @@ export function useWebSocket(token) {
             const event = JSON.parse(e.data)
 
             if (event.event === "triage_complete") {
-                // small delay before showing result so last node is visible
                 setTimeout(() => {
                     setResult(event.data)
                     setStatus("complete")
@@ -37,7 +36,6 @@ export function useWebSocket(token) {
             } else if (event.event === "error") {
                 setStatus("error")
             } else {
-                // append events one by one with no batching
                 setEvents((prev) => [...prev, event])
             }
         }

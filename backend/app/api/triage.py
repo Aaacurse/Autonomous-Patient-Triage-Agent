@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter,Depends,HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select,desc
@@ -6,9 +7,38 @@ from app.db.sessions import get_db
 from app.db.models import TriageSession,TriageRecord
 from app.api.auth import get_current_user
 from app.db.models import User
-from app.db.crud import get_sessions_with_record,get_user_sessions
+from app.db.crud import get_sessions_with_record,get_user_sessions,get_triages_by_mrn
 
 router=APIRouter(prefix='/triage',tags=['triage'])
+
+MRN_PATTERN = re.compile(r"^MRN-\d{4,}$", re.IGNORECASE)
+
+
+@router.get("/sessions/by-mrn/{mrn}")
+async def get_sessions_by_mrn(mrn:str,db:AsyncSession=Depends(get_db),current_user:User=Depends(get_current_user)):
+    mrn=mrn.strip().upper()
+    
+    if not MRN_PATTERN.match(mrn):
+        raise(HTTPException(status_code=400,detail="Invalid MRN Format"))
+    
+    triages= await get_triages_by_mrn(db=db,mrn=mrn)
+    
+    return [
+        {
+            "session_id": str(s.id),
+            "mrn": s.mrn,
+            "status": s.status,
+            "created_at": s.created_at.isoformat(),
+            "record": {
+                "raw_complaint": s.record.raw_complaint,
+                "esi_level": s.record.esi_level,
+                "disposition_zone": s.record.disposition_zone,
+                "escalated": s.record.escalated,
+            } if s.record else None,
+        }
+        for s in triages
+    ]
+
 
 @router.get("/sessions")
 async def get_sessions(db:AsyncSession=Depends(get_db),current_user:User=Depends(get_current_user)):
@@ -16,7 +46,7 @@ async def get_sessions(db:AsyncSession=Depends(get_db),current_user:User=Depends
     
     return [
         {"session_id":str(s.id),
-        "patient_id":s.patient_id,
+        "mrn":s.mrn,
         "status":s.status,
         "created_at":s.created_at.isoformat() 
         }
@@ -41,7 +71,7 @@ async def get_session_detail(
     
     return {
         "session_id": str(session.id),
-        "patient_id": session.patient_id,
+        "mrn": session.mrn,
         "status": session.status,
         "created_at": session.created_at.isoformat(),
         "record": {

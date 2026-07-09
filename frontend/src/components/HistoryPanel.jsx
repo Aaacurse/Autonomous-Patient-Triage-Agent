@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getSessions, getSessionDetail } from "../api/triage"
+import { getSessions, getSessionDetail, getSessionsByMrn } from "../api/triage"
 
 const ESI_COLORS = {
     1: "#fc8181",
@@ -40,8 +40,8 @@ function SessionDetail({ session, token, onClose }) {
                 <button style={styles.closeBtn} onClick={onClose}>✕</button>
             </div>
 
-            <p style={styles.label}>Patient</p>
-            <p style={styles.value}>{detail.patient_id}</p>
+            <p style={styles.label}>Patient MRN</p>
+            <p style={styles.value}>{detail.mrn}</p>
 
             <p style={styles.label}>Complaint</p>
             <p style={styles.value}>{r.raw_complaint}</p>
@@ -79,6 +79,10 @@ function HistoryPanel({ token }) {
     const [sessions, setSessions] = useState([])
     const [loading, setLoading] = useState(true)
     const [selected, setSelected] = useState(null)
+    const [mrnQuery, setMrnQuery] = useState("")
+    const [searchResults, setSearchResults] = useState(null) 
+    const [searchLoading, setSearchLoading] = useState(false)
+    const [searchError, setSearchError] = useState(null)
 
     useEffect(() => {
     getSessions(token)
@@ -97,11 +101,58 @@ function HistoryPanel({ token }) {
         })
     }}, [selected])
 
+    function handleMrnSearch() {
+    const mrn = mrnQuery.trim().toUpperCase()
+    if (!mrn) return
+    setSearchLoading(true)
+    setSearchError(null)
+    getSessionsByMrn(token, mrn)
+        .then((data) => setSearchResults(data))
+        .catch((err) => {
+            setSearchResults(null)
+            setSearchError(err.message)
+        })
+        .finally(() => setSearchLoading(false))
+    }
+
+    function clearSearch() {
+        setMrnQuery("")
+        setSearchResults(null)
+        setSearchError(null)
+    }
+
     if (loading) return <p style={styles.muted}>Loading history...</p>
-    if (sessions.length === 0) return <p style={styles.muted}>No past sessions yet.</p>
+
+    const listToShow = searchResults !== null ? searchResults : sessions
 
     return (
         <div>
+            <div style={styles.searchBar}>
+                <input
+                    style={styles.searchInput}
+                    placeholder="Look up patient by MRN (e.g. MRN-00123)"
+                    value={mrnQuery}
+                    onChange={(e) => setMrnQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleMrnSearch()}
+                />
+                <button style={styles.searchButton} onClick={handleMrnSearch} disabled={searchLoading}>
+                    {searchLoading ? "Searching..." : "Search"}
+                </button>
+                {searchResults !== null && (
+                    <button style={styles.clearButton} onClick={clearSearch}>
+                        Clear
+                    </button>
+                )}
+            </div>
+
+            {searchError && <p style={styles.errorText}>{searchError}</p>}
+
+            {searchResults !== null && (
+                <p style={styles.sectionLabel}>
+                    {searchResults.length} triage{searchResults.length === 1 ? "" : "s"} found for {mrnQuery.trim().toUpperCase()}
+                </p>
+            )}
+
             {selected && (
                 <SessionDetail
                     session={selected}
@@ -109,15 +160,21 @@ function HistoryPanel({ token }) {
                     onClose={() => setSelected(null)}
                 />
             )}
-            <div style={styles.list}>
-                {sessions.map((s) => (
+
+            {listToShow.length === 0 ? (
+                <p style={styles.muted}>
+                    {searchResults !== null ? "No triages found for this MRN." : "No past sessions yet."}
+                </p>
+            ) : (
+                <div style={styles.list}>
+                {listToShow.map((s) => (
                     <div
                         key={s.session_id}
                         style={styles.row}
                         onClick={() => setSelected(s)}
                     >
                         <div>
-                            <p style={styles.rowTitle}>{s.patient_id}</p>
+                            <p style={styles.rowTitle}>{s.mrn}</p>
                             <p style={styles.rowSub}>
                                 {new Date(s.created_at).toLocaleString()}
                             </p>
@@ -136,6 +193,7 @@ function HistoryPanel({ token }) {
                     </div>
                 ))}
             </div>
+            )}
         </div>
     )
 }
@@ -200,6 +258,12 @@ const styles = {
         borderRadius: "99px",
         fontSize: "11px",
     },
-}
+    searchBar: { display: "flex", gap: "0.5rem", marginBottom: "0.75rem" },
+    searchInput: { flex: 1, padding: "0.65rem 0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "14px" },
+    searchButton: { padding: "0.65rem 1.25rem", backgroundColor: "#3182ce", color: "white", border: "none", borderRadius: "8px", fontSize: "14px", cursor: "pointer" },
+    clearButton: { padding: "0.65rem 1rem", backgroundColor: "white", color: "#718096", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "14px", cursor: "pointer" },
+    sectionLabel: { fontSize: "13px", color: "#718096", margin: "0 0 0.75rem" },
+    errorText: { fontSize: "13px", color: "#e53e3e", margin: "0 0 0.75rem" },
+    }
 
 export default HistoryPanel
