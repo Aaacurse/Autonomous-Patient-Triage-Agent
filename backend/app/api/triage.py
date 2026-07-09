@@ -13,14 +13,13 @@ router=APIRouter(prefix='/triage',tags=['triage'])
 
 MRN_PATTERN = re.compile(r"^MRN-\d{4,}$", re.IGNORECASE)
 
-
 @router.get("/sessions/by-mrn/{mrn}")
 async def get_sessions_by_mrn(mrn:str,db:AsyncSession=Depends(get_db),current_user:User=Depends(get_current_user)):
     mrn=mrn.strip().upper()
     
-    if not MRN_PATTERN.match(mrn):
-        raise(HTTPException(status_code=400,detail="Invalid MRN Format"))
     
+    if not MRN_PATTERN.match(mrn):
+        raise HTTPException(status_code=400,detail="Enter a complete MRN to search, e.g. MRN-00123")
     triages= await get_triages_by_mrn(db=db,mrn=mrn)
     
     return [

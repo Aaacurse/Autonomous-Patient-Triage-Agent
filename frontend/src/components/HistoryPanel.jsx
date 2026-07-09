@@ -79,7 +79,7 @@ function HistoryPanel({ token }) {
     const [sessions, setSessions] = useState([])
     const [loading, setLoading] = useState(true)
     const [selected, setSelected] = useState(null)
-    const [mrnQuery, setMrnQuery] = useState("")
+    const [mrnDigits, setMrnDigits] = useState("")
     const [searchResults, setSearchResults] = useState(null) 
     const [searchLoading, setSearchLoading] = useState(false)
     const [searchError, setSearchError] = useState(null)
@@ -101,22 +101,27 @@ function HistoryPanel({ token }) {
         })
     }}, [selected])
 
+    function handleMrnQueryChange(e) {
+    const digits = e.target.value.replace(/\D/g, "")
+    setMrnDigits(digits)
+    }
+
     function handleMrnSearch() {
-    const mrn = mrnQuery.trim().toUpperCase()
-    if (!mrn) return
-    setSearchLoading(true)
-    setSearchError(null)
-    getSessionsByMrn(token, mrn)
-        .then((data) => setSearchResults(data))
-        .catch((err) => {
-            setSearchResults(null)
-            setSearchError(err.message)
-        })
-        .finally(() => setSearchLoading(false))
+        if (!mrnDigits) return
+        const mrn = `MRN-${mrnDigits}`
+        setSearchLoading(true)
+        setSearchError(null)
+        getSessionsByMrn(token, mrn)
+            .then((data) => setSearchResults(data))
+            .catch((err) => {
+                setSearchResults(null)
+                setSearchError(err.message)
+            })
+            .finally(() => setSearchLoading(false))
     }
 
     function clearSearch() {
-        setMrnQuery("")
+        setMrnDigits("")
         setSearchResults(null)
         setSearchError(null)
     }
@@ -130,9 +135,9 @@ function HistoryPanel({ token }) {
             <div style={styles.searchBar}>
                 <input
                     style={styles.searchInput}
-                    placeholder="Look up patient by MRN (e.g. MRN-00123)"
-                    value={mrnQuery}
-                    onChange={(e) => setMrnQuery(e.target.value)}
+                    placeholder="Look up patient by MRN"
+                    value={`MRN-${mrnDigits}`}
+                    onChange={handleMrnQueryChange}
                     onKeyDown={(e) => e.key === "Enter" && handleMrnSearch()}
                 />
                 <button style={styles.searchButton} onClick={handleMrnSearch} disabled={searchLoading}>
@@ -149,7 +154,7 @@ function HistoryPanel({ token }) {
 
             {searchResults !== null && (
                 <p style={styles.sectionLabel}>
-                    {searchResults.length} triage{searchResults.length === 1 ? "" : "s"} found for {mrnQuery.trim().toUpperCase()}
+                    {searchResults.length} triage{searchResults.length === 1 ? "" : "s"} found for MRN-{mrnDigits}
                 </p>
             )}
 

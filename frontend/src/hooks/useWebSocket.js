@@ -4,7 +4,7 @@ const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || "ws://localhost:8000"
 
 export function useWebSocket(token) {
     const [events, setEvents] = useState([])
-    const [status, setStatus] = useState("idle") // idle | connecting | streaming | complete | error
+    const [status, setStatus] = useState("idle")
     const [result, setResult] = useState(null)
     const wsRef = useRef(null)
 
