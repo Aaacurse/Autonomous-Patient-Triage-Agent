@@ -87,6 +87,15 @@ function HistoryPanel({ token }) {
             setSessions(data)
         })
         .finally(() => setLoading(false))}, [token])
+    
+    
+    useEffect(() => {
+    if (selected) {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        })
+    }}, [selected])
 
     if (loading) return <p style={styles.muted}>Loading history...</p>
     if (sessions.length === 0) return <p style={styles.muted}>No past sessions yet.</p>
