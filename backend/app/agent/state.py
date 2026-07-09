@@ -3,7 +3,7 @@ from typing import TypedDict,Optional,Literal
 
 class TriageState(TypedDict,total=False):
     session_id:str
-    patient_id:str
+    mrn:str
     raw_complaint:str
     reported_vitals:Optional[dict]
     

@@ -37,3 +37,10 @@ async def get_user_sessions(db:AsyncSession,nurse_id:str):
     sessions=result.scalars().all()
     
     return sessions    
+
+async def get_triages_by_mrn(db:AsyncSession,mrn:str):
+    result=await db.execute(select(TriageSession).where(TriageSession.mrn==mrn).options(selectinload(TriageSession.record)).order_by(TriageSession.created_at.desc()))
+    
+    triages=result.scalars().all()
+    
+    return triages

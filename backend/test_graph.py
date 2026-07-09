@@ -9,7 +9,7 @@ async def run_test(complaint: str, label: str):
 
     initial_state = {
         "session_id": "test-session-001",
-        "patient_id": "patient-001",
+        "mrn": "MRN-00001",
         "raw_complaint": complaint,
         "reported_vitals": None,
     }

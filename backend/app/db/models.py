@@ -38,7 +38,7 @@ class TriageSession(Base):
     
     id=Column(UUID(as_uuid=True),primary_key=True,default=uuid.uuid4)
     nurse_id=Column(UUID(as_uuid=True),ForeignKey("users.id"),nullable=False)
-    patient_id=Column(String,nullable=False)
+    mrn=Column(String,nullable=False)
     status=Column(SAEnum(SessionStatus),default=SessionStatus.PENDING)
     created_at=Column(DateTime,default=datetime.now)
     updated_at=Column(DateTime,default=datetime.now,onupdate=datetime.now)

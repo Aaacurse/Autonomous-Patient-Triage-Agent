@@ -1,6 +1,6 @@
 import json
+import re
 from datetime import datetime,UTC
-from uuid import uuid4
 from fastapi import APIRouter,WebSocket,WebSocketDisconnect,Depends,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.sessions import get_db
@@ -11,6 +11,8 @@ from app.agent.graph import triage_graph
 
 
 router=APIRouter()
+
+MRN_PATTERN = re.compile(r"^MRN-\d{4,}$", re.IGNORECASE)
 
 def make_event(event:str,node:str=None,data:dict=None)->str:
     return json.dumps({
@@ -50,26 +52,36 @@ async def triage_websocket(
         message=json.loads(raw_message)
         
         complaint=message.get("complaint","").strip()
-        patient_id=message.get("patient_id",f"patient-{uuid4().hex[:8]}")
+        mrn=message.get("mrn","").strip().upper()
         
         if not complaint:
             await websocket.send_text(make_event("error",data={"detail":"Empty Complaint"}))
             await websocket.close()
             return
         
+        if not mrn:
+            await websocket.send_text(make_event("error",data={"detail":"Patient MRN is required"}))
+            await websocket.close()
+            return
+            
+        if not MRN_PATTERN.match(mrn):
+            await websocket.send_text(make_event("error",data={"detail":"Invalid MRN format. Expected e.g. MRN-00123"}))
+            await websocket.close()
+            return
+
         session=TriageSession(
             nurse_id=user.id,
-            patient_id=patient_id,
+            mrn=mrn,
             status=SessionStatus.PROCESSING
         )
         db.add(session)
         await db.flush()
         
-        await websocket.send_text(make_event("session_started",data={"session_id":str(session.id),"patient_id":patient_id}))
+        await websocket.send_text(make_event("session_started",data={"session_id":str(session.id),"mrn":mrn}))
         
         initial_state={
             "session_id":str(session.id),
-            "patient_id":patient_id,
+            "mrn":mrn,
             "raw_complaint":complaint,
             "reported_vitals":message.get("vitals"),
         }
