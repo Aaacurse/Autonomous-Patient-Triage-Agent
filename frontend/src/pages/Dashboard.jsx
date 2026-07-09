@@ -4,7 +4,7 @@ import StatusPanel from "../components/StatusPanel"
 import ResultCard from "../components/ResultCard"
 import HistoryPanel from "../components/HistoryPanel"
 
-function Dashboard({ token, onLogout }) {
+function Dashboard({ token, onLogout, countdown }) {
     const [tab, setTab] = useState("triage")
     const [complaint, setComplaint] = useState("")
     const [patientId, setPatientId] = useState("")
@@ -20,13 +20,27 @@ function Dashboard({ token, onLogout }) {
         setPatientId("")
         reset()
     }
+    const minutes = Math.floor(countdown / 60)
+    const seconds = countdown % 60
+
+    const formattedTime =
+        `${minutes}:${seconds.toString().padStart(2, "0")}`
 
     return (
         <div style={styles.container}>
             <div style={styles.header}>
                 <h2 style={styles.title}>Patient Triage Agent</h2>
-                <button style={styles.logout} onClick={onLogout}>Logout</button>
-            </div>
+
+                <div style={styles.headerRight}>
+                    <span style={styles.timer}>
+                        Session expires in {formattedTime}
+                    </span>
+
+                    <button style={styles.logout} onClick={onLogout}>
+                        Logout
+                    </button>
+                </div>
+            </div>  
 
             {/* Tabs */}
             <div style={styles.tabs}>
@@ -101,6 +115,8 @@ const styles = {
     textarea: { padding: "0.75rem", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "14px", resize: "vertical", fontFamily: "inherit" },
     button: { flex: 1, padding: "0.75rem", backgroundColor: "#3182ce", color: "white", border: "none", borderRadius: "8px", fontSize: "14px", cursor: "pointer" },
     secondaryButton: { padding: "0.75rem 1.5rem", backgroundColor: "white", color: "#3182ce", border: "1px solid #3182ce", borderRadius: "8px", fontSize: "14px", cursor: "pointer" },
+    headerRight: {display: "flex",alignItems: "center",gap: "1rem",},
+    timer: {fontSize: "14px",fontWeight: "600",color: "#4a5568",backgroundColor: "#edf2f7",padding: "0.45rem 0.9rem",borderRadius: "999px",},
 }
 
 export default Dashboard
