@@ -7,19 +7,25 @@ import HistoryPanel from "../components/HistoryPanel"
 function Dashboard({ token, onLogout, countdown }) {
     const [tab, setTab] = useState("triage")
     const [complaint, setComplaint] = useState("")
-    const [mrn, setMrn] = useState("")
+    const [mrnDigits, setMrnDigits] = useState("")
     const { events, status, result, startTriage, reset } = useWebSocket(token)
-    const MRN_PATTERN = /^MRN-\d{4,}$/i
-    const mrnValid = MRN_PATTERN.test(mrn.trim())
+
+    const mrn = `MRN-${mrnDigits}`
+    const mrnValid = /^\d{4,}$/.test(mrnDigits)
+
+    function handleMrnChange(e) {
+        const digits = e.target.value.replace(/\D/g, "")
+        setMrnDigits(digits)
+    }
 
     function handleSubmit() {
-        if (!complaint.trim()) return
-        startTriage(complaint, mrn.trim().toUpperCase())
+        if (!complaint.trim() || !mrnValid) return
+        startTriage(complaint, mrn)
     }
 
     function handleNewTriage() {
         setComplaint("")
-        setMrn("")
+        setMrnDigits("")
         reset()
     }
     const minutes = Math.floor(countdown / 60)
@@ -63,18 +69,18 @@ function Dashboard({ token, onLogout, countdown }) {
             {tab === "triage" && (
                 <>
                     <div style={styles.form}>
-                        <input
+                       <input
                             style={{
                                 ...styles.input,
-                                ...(mrn && !mrnValid ? styles.inputError : {}),
+                                ...(mrnDigits && !mrnValid ? styles.inputError : {}),
                             }}
-                            placeholder="Patient MRN (e.g. MRN-00123)"
+                            placeholder="Patient MRN"
                             value={mrn}
-                            onChange={(e) => setMrn(e.target.value)}
+                            onChange={handleMrnChange}
                         />
-                        {mrn && !mrnValid && (
+                        {mrnDigits && !mrnValid && (
                             <span style={styles.errorText}>
-                                Enter a valid MRN, e.g. MRN-00123
+                                Enter at least 4 digits, e.g. MRN-00123
                             </span>
                         )}
                         <textarea
