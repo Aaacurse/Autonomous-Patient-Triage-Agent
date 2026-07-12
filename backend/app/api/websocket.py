@@ -88,7 +88,10 @@ async def triage_websocket(
         
         final_state={}
         
-        async for chunk in triage_graph.astream(initial_state,stream_mode="updates"):
+        async for chunk in triage_graph.astream(
+            initial_state,
+            config={"configurable":{"db":db}},
+            stream_mode="updates"):
             for node_name,node_state in chunk.items():
                 final_state.update(node_state)
                 await websocket.send_text(make_event("node_complete",node=node_name,data={
@@ -97,7 +100,9 @@ async def triage_websocket(
                     "pain_score":node_state.get("pain_score"),
                     "esi_level":node_state.get("esi_level"),
                     "disposition_zone":node_state.get("disposition_zone"),
-                    "escalated":node_state.get("escalated")}))
+                    "escalated":node_state.get("escalated"),
+                    "patient_history_checked":node_state.get("patient_history_checked"),
+                    "repeat_high_acuity_visit":node_state.get("repeat_high_acuity_visit")}))
         
         record = TriageRecord(
             session_id=session.id,
@@ -138,6 +143,8 @@ async def triage_websocket(
         pass
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         await websocket.send_text(make_event("error",data={"detail":str(e)}))
         
     finally:

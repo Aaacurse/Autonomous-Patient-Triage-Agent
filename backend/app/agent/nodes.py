@@ -1,5 +1,6 @@
+from langchain_core.runnables import RunnableConfig
 from app.agent.state import TriageState
-from app.agent.nlp import (extract_entities,extract_pain_score,groom_with_groq)
+from app.agent.nlp import (extract_entities,extract_pain_score,groom_with_groq,maybe_fetch_patient_history)
 
 async def intake_node(state:TriageState)->TriageState:
     raw=state.get('raw_complaint',"").strip()
@@ -19,14 +20,22 @@ async def intake_node(state:TriageState)->TriageState:
     }
     
     
-async def nlp_extract_node(state:TriageState)->TriageState:
+async def nlp_extract_node(state:TriageState,config:RunnableConfig)->TriageState:
     complaint=state.get("raw_complaint","")
+    mrn=state.get("mrn")
+    db=(config or {}).get("configurable",{}).get("db")
     
     scispacy_output = extract_entities(complaint)
     entities = scispacy_output["entities"]
     
     pain_score = extract_pain_score(complaint)
-    groq_output = groom_with_groq(complaint, entities)
+    
+    hhistory_summary=None
+    repeat_high_acuity_visit=False
+    if db and mrn:
+        history_summary, repeat_high_acuity_visit = await maybe_fetch_patient_history(complaint, db, mrn)
+
+    groq_output = await groom_with_groq(complaint, entities, history_summary)
 
     if pain_score is None:
         pain_score = groq_output.inferred_pain_score
@@ -44,6 +53,8 @@ async def nlp_extract_node(state:TriageState)->TriageState:
         "groq_is_high_risk": groq_output.is_high_risk,
         "groq_estimated_resources": groq_output.estimated_resources,
         "groq_danger_zone_vitals": groq_output.danger_zone_vitals,
+        "patient_history_checked":history_summary is not None,
+        "repeat_high_acuity_visit": repeat_high_acuity_visit,
     }
     
     
@@ -55,6 +66,7 @@ async def esi_scorer_node(state:TriageState)->TriageState:
     high_risk = state.get("groq_is_high_risk", False)
     estimated_resources = state.get("groq_estimated_resources", [])
     danger_zone_vitals = state.get("groq_danger_zone_vitals", False)
+    repeat_high_acuity_visit=state.get("repeat_high_acuity_visit",False)
 
     if pain_score >= 9:
         life_threat = True
@@ -80,9 +92,10 @@ async def esi_scorer_node(state:TriageState)->TriageState:
         "estimated_resources": estimated_resources,
         "danger_zone_vitals": danger_zone_vitals,
         "esi_level": esi_level,
-        "esi_reasoning": (
+       "esi_reasoning": (
             f"pain={pain_score}, life_threat={life_threat}, "
-            f"high_risk={high_risk}, resources={estimated_resources}"
+            f"high_risk={high_risk}, resources={estimated_resources}, "
+            f"repeat_high_acuity_visit={repeat_high_acuity_visit}"
         ),
     }
     

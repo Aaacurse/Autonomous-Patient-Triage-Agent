@@ -10,6 +10,8 @@ class TriageState(TypedDict,total=False):
     extracted_symptoms:list[str]
     extracted_entities:dict
     pain_score:Optional[int]
+    patient_history_checked:bool
+    repeat_high_acuity_visit:bool
     
     groq_is_life_threat: bool
     groq_is_high_risk: bool
