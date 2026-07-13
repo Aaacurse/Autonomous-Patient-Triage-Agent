@@ -1,41 +1,43 @@
 import json
 import re
-from datetime import datetime,UTC
-from fastapi import APIRouter,WebSocket,WebSocketDisconnect,Depends,Query
+from datetime import datetime, UTC
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.sessions import get_db
-from app.db.models import TriageRecord,TriageSession,SessionStatus
+from app.db.models import TriageRecord, TriageSession, SessionStatus
 from app.db.crud import get_user_by_email
 from app.core.security import decode_token
 from app.agent.graph import triage_graph
 
 
-router=APIRouter()
+router = APIRouter()
 
 MRN_PATTERN = re.compile(r"^MRN-\d{4,}$", re.IGNORECASE)
 
-def make_event(event:str,node:str=None,data:dict=None)->str:
-    return json.dumps({
-      "event":event,
-      "node":node,
-      "data":data or {},
-      "timestamp":datetime.now(UTC).isoformat()  
-    })
-    
-async def get_user_from_token(token:str,db:AsyncSession):
+
+def make_event(event: str, node: str = None, data: dict = None) -> str:
+    return json.dumps(
+        {
+            "event": event,
+            "node": node,
+            "data": data or {},
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+    )
+
+
+async def get_user_from_token(token: str, db: AsyncSession):
     try:
-        email=decode_token(token,"access")
+        email = decode_token(token, "access")
     except ValueError:
         return None
-    
-    return await get_user_by_email(db=db,email=email)
+
+    return await get_user_by_email(db=db, email=email)
 
 
-@router.websocket('/ws/triage')
+@router.websocket("/ws/triage")
 async def triage_websocket(
-    websocket: WebSocket,
-    token: str = Query(),
-    db: AsyncSession = Depends(get_db)
+    websocket: WebSocket, token: str = Query(), db: AsyncSession = Depends(get_db)
 ):
     print(f"Token received: {token[:30]}...")
     user = await get_user_from_token(token=token, db=db)
@@ -44,66 +46,87 @@ async def triage_websocket(
     if not user:
         await websocket.close(code=4001)
         return
-    
+
     await websocket.accept()
-    
+
     try:
-        raw_message= await websocket.receive_text()
-        message=json.loads(raw_message)
-        
-        complaint=message.get("complaint","").strip()
-        mrn=message.get("mrn","").strip().upper()
-        
+        raw_message = await websocket.receive_text()
+        message = json.loads(raw_message)
+
+        complaint = message.get("complaint", "").strip()
+        mrn = message.get("mrn", "").strip().upper()
+
         if not complaint:
-            await websocket.send_text(make_event("error",data={"detail":"Empty Complaint"}))
-            await websocket.close()
-            return
-        
-        if not mrn:
-            await websocket.send_text(make_event("error",data={"detail":"Patient MRN is required"}))
-            await websocket.close()
-            return
-            
-        if not MRN_PATTERN.match(mrn):
-            await websocket.send_text(make_event("error",data={"detail":"Invalid MRN format. Expected e.g. MRN-00123"}))
+            await websocket.send_text(
+                make_event("error", data={"detail": "Empty Complaint"})
+            )
             await websocket.close()
             return
 
-        session=TriageSession(
-            nurse_id=user.id,
-            mrn=mrn,
-            status=SessionStatus.PROCESSING
+        if not mrn:
+            await websocket.send_text(
+                make_event("error", data={"detail": "Patient MRN is required"})
+            )
+            await websocket.close()
+            return
+
+        if not MRN_PATTERN.match(mrn):
+            await websocket.send_text(
+                make_event(
+                    "error",
+                    data={"detail": "Invalid MRN format. Expected e.g. MRN-00123"},
+                )
+            )
+            await websocket.close()
+            return
+
+        session = TriageSession(
+            nurse_id=user.id, mrn=mrn, status=SessionStatus.PROCESSING
         )
         db.add(session)
         await db.flush()
-        
-        await websocket.send_text(make_event("session_started",data={"session_id":str(session.id),"mrn":mrn}))
-        
-        initial_state={
-            "session_id":str(session.id),
-            "mrn":mrn,
-            "raw_complaint":complaint,
-            "reported_vitals":message.get("vitals"),
+
+        await websocket.send_text(
+            make_event(
+                "session_started", data={"session_id": str(session.id), "mrn": mrn}
+            )
+        )
+
+        initial_state = {
+            "session_id": str(session.id),
+            "mrn": mrn,
+            "raw_complaint": complaint,
+            "reported_vitals": message.get("vitals"),
         }
-        
-        final_state={}
-        
+
+        final_state = {}
+
         async for chunk in triage_graph.astream(
-            initial_state,
-            config={"configurable":{"db":db}},
-            stream_mode="updates"):
-            for node_name,node_state in chunk.items():
+            initial_state, config={"configurable": {"db": db}}, stream_mode="updates"
+        ):
+            for node_name, node_state in chunk.items():
                 final_state.update(node_state)
-                await websocket.send_text(make_event("node_complete",node=node_name,data={
-                    "last_node":node_state.get("last_node"),
-                    "extracted_symptoms":node_state.get("extracted_symptoms"),
-                    "pain_score":node_state.get("pain_score"),
-                    "esi_level":node_state.get("esi_level"),
-                    "disposition_zone":node_state.get("disposition_zone"),
-                    "escalated":node_state.get("escalated"),
-                    "patient_history_checked":node_state.get("patient_history_checked"),
-                    "repeat_high_acuity_visit":node_state.get("repeat_high_acuity_visit")}))
-        
+                await websocket.send_text(
+                    make_event(
+                        "node_complete",
+                        node=node_name,
+                        data={
+                            "last_node": node_state.get("last_node"),
+                            "extracted_symptoms": node_state.get("extracted_symptoms"),
+                            "pain_score": node_state.get("pain_score"),
+                            "esi_level": node_state.get("esi_level"),
+                            "disposition_zone": node_state.get("disposition_zone"),
+                            "escalated": node_state.get("escalated"),
+                            "patient_history_checked": node_state.get(
+                                "patient_history_checked"
+                            ),
+                            "repeat_high_acuity_visit": node_state.get(
+                                "repeat_high_acuity_visit"
+                            ),
+                        },
+                    )
+                )
+
         record = TriageRecord(
             session_id=session.id,
             raw_complaint=complaint,
@@ -120,32 +143,39 @@ async def triage_websocket(
             escalated=final_state.get("escalated", False),
         )
         db.add(record)
-        
-        session.status=(
-            SessionStatus.ESCALATED if final_state.get("escalated") else SessionStatus.COMPLETED
+
+        session.status = (
+            SessionStatus.ESCALATED
+            if final_state.get("escalated")
+            else SessionStatus.COMPLETED
         )
         await db.flush()
-        
-        await websocket.send_text(make_event(
-            "triage_complete",
-            data={
-                "session_id": str(session.id),
-                "esi_level": final_state.get("esi_level"),
-                "disposition_zone": final_state.get("disposition_zone"),
-                "escalated": final_state.get("escalated"),
-                "esi_reasoning": final_state.get("esi_reasoning"),
-                "extracted_symptoms": final_state.get("extracted_symptoms"),
-                "clinical_notes": final_state.get("extracted_entities", {}).get("groq_clinical_notes"),
-            }
-        ))
-        
+
+        await websocket.send_text(
+            make_event(
+                "triage_complete",
+                data={
+                    "session_id": str(session.id),
+                    "esi_level": final_state.get("esi_level"),
+                    "disposition_zone": final_state.get("disposition_zone"),
+                    "escalated": final_state.get("escalated"),
+                    "esi_reasoning": final_state.get("esi_reasoning"),
+                    "extracted_symptoms": final_state.get("extracted_symptoms"),
+                    "clinical_notes": final_state.get("extracted_entities", {}).get(
+                        "groq_clinical_notes"
+                    ),
+                },
+            )
+        )
+
     except WebSocketDisconnect:
         pass
-    
+
     except Exception as e:
         import traceback
+
         traceback.print_exc()
-        await websocket.send_text(make_event("error",data={"detail":str(e)}))
-        
+        await websocket.send_text(make_event("error", data={"detail": str(e)}))
+
     finally:
         await websocket.close()

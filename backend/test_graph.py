@@ -3,7 +3,7 @@ from app.agent.graph import triage_graph
 
 
 async def run_test(complaint: str, label: str):
-    print(f"\n{'─'*50}")
+    print(f"\n{'─' * 50}")
     print(f"TEST: {label}")
     print(f"Complaint: {complaint}")
 

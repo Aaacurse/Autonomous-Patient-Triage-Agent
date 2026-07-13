@@ -4,7 +4,6 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 from app.db.models import Base
-from app.db.models import User,TriageRecord,TriageSession
 from app.core.config import settings
 
 config = context.config

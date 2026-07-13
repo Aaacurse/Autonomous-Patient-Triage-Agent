@@ -10,10 +10,14 @@ async def test_triage():
 
     async with websockets.connect(uri) as ws:
         # send complaint
-        await ws.send(json.dumps({
-            "complaint": "severe chest pain radiating to arm, pain 8/10",
-            "mrn": "MRN-00001"
-        }))
+        await ws.send(
+            json.dumps(
+                {
+                    "complaint": "severe chest pain radiating to arm, pain 8/10",
+                    "mrn": "MRN-00001",
+                }
+            )
+        )
 
         # receive all events until connection closes
         while True:

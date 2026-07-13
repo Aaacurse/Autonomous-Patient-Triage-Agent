@@ -9,10 +9,10 @@ from fastapi import Depends
 from app.db.models import User
 from app.api.auth import get_current_user
 
-app=FastAPI(
+app = FastAPI(
     title="Autonomous Patient Triage Agent",
     description="AI-powered emergency department triage system",
-    version="0.1.0"
+    version="0.1.0",
 )
 
 app.add_middleware(
@@ -22,6 +22,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/health")
 def health():
@@ -34,9 +35,9 @@ app.include_router(triage_router)
 
 
 @app.get("/me")
-async def me(current_user:User=Depends(get_current_user)):
+async def me(current_user: User = Depends(get_current_user)):
     return {
         "email": current_user.email,
-        "full_name":current_user.full_name,
-        "is_active":current_user.is_active
+        "full_name": current_user.full_name,
+        "is_active": current_user.is_active,
     }

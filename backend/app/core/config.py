@@ -3,13 +3,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=BASE_DIR/".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env", env_file_encoding="utf-8"
+    )
 
     environment: str = "development"
     debug: bool = True
 
-    database_url:str="postgresql+asyncpg://triage_user:triage_pass@localhost:5432/triage_db"
+    database_url: str = (
+        "postgresql+asyncpg://triage_user:triage_pass@localhost:5432/triage_db"
+    )
 
     jwt_secret_key: str = "changeme"
     jwt_algorithm: str = "HS256"
