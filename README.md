@@ -145,7 +145,6 @@ The app runs at `http://localhost:5173` by default; the backend at `http://local
 ## Roadmap
 
 - [ ] Pytest test suite (unit tests for scoring logic, integration tests for the graph and WebSocket flow)
-- [ ] Dockerfile + docker-compose for one-command local spin-up
 - [ ] CI pipeline (GitHub Actions) running tests on push
 - [ ] Uncertainty-driven clarification loop — model asks a follow-up question when extraction confidence is low, instead of guessing
 - [ ] Bounded self-reflection step — model checks its own ESI reasoning against the extracted evidence before finalizing
