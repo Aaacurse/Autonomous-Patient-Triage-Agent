@@ -35,6 +35,8 @@ Thumbs.db
 
 # ── Postgres ──
 postgres_data/
+*.db
+*.sqlite
 
 .ruff_cache
 .mypy_cache
