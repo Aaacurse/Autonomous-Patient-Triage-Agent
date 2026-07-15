@@ -16,6 +16,22 @@ async def registered_user(client):
         "password": "password123",
     }
 
+    
+@pytest_asyncio.fixture
+async def logged_in_user(client,registered_user):
+    response=await client.post(
+        "/auth/login",
+        data={
+            "username": "john@example.com",
+            "password": "password123",
+        },
+    )
+    body=response.json()
+    return {
+        "access_token": body['access_token'],
+        "refresh_token": body['refresh_token'],
+    }
+
 @pytest.mark.asyncio
 async def test_register(client):
     
@@ -73,3 +89,26 @@ async def test_invalid_password(client,registered_user):
     )
     assert response.status_code==401
     
+@pytest.mark.asyncio
+async def test_get_sessions_requires_auth(client):
+    response=await client.get("/triage/sessions")
+    
+    assert response.status_code==401
+    
+
+@pytest.mark.asyncio
+async def test_get_sessions_with_auth(client,logged_in_user):
+    token={
+        'access_token':logged_in_user['access_token'],
+        'refresh_token':logged_in_user['refresh_token']
+    }
+    headers={
+        'Authorization': f"Bearer {token['access_token']}"
+    }
+    
+    response=await client.get(
+        "/triage/sessions",
+        headers=headers
+    )
+    
+    assert response.status_code==200
