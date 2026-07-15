@@ -29,6 +29,9 @@ jobs:
           push: true
           tags: aaacurse/autonomous-triage-agent:backend
 
+      - name: Run Tests
+        run: pytest 
+
       - name: Build and Push Frontend
         uses: docker/build-push-action@v6
         with:
